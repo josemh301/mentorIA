@@ -14,28 +14,31 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Track processed messages to avoid duplicates
+# The set for processing messages is now potentially redundant, as
+# the architectural fix prevents the double-processing issue.
 processed_messages = set()
 
 @bot.event
 async def on_ready():
     print(f'Bot conectado como {bot.user}')
 
-@bot.event
+@bot.listen()
 async def on_message(message):
     # Ignore messages from the bot itself
     if message.author == bot.user:
         return
     
-    # Skip if we've already processed this message
+    # Optional check: skip if we've already processed this message
+    # (Note: This is now largely unnecessary with the correct architectural pattern)
     if message.id in processed_messages:
         return
     
-    # Add message to processed set
+    # Add message to processed set (optional)
     processed_messages.add(message.id)
     
-    # Clean old messages from set (keep only last 100)
+    # Clean old messages from set (optional, keep only last 100)
     if len(processed_messages) > 100:
+        # Note: A proper deque or LRU cache would be more efficient for this
         processed_messages.clear()
     
     # Only respond if the bot is mentioned
@@ -58,5 +61,11 @@ async def on_message(message):
                 await message.reply(f"Error: {str(e)}")
         else:
             await message.reply("¡Hola! Soy MentorIA. Pregúntame sobre inversiones inmobiliarias mencionándome: `@MentorIA <tu pregunta>`")
+
+# The command handler for other commands can now be defined separately without conflict.
+# For example:
+# @bot.command()
+# async def help(ctx):
+#     await ctx.send("This is a command-based response.")
 
 bot.run(TOKEN)
