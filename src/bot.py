@@ -3,6 +3,7 @@ from discord.ext import commands
 import os
 from dotenv import load_dotenv
 from rag import ask_llm
+import asyncio
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
@@ -12,6 +13,9 @@ intents.messages = True
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+# Track processed messages to avoid duplicates
+processed_messages = set()
 
 @bot.event
 async def on_ready():
@@ -23,8 +27,23 @@ async def on_message(message):
     if message.author == bot.user:
         return
     
+    # Skip if we've already processed this message
+    if message.id in processed_messages:
+        print(f"[DEBUG] Skipping already processed message {message.id}")
+        return
+    
+    # Add message to processed set
+    processed_messages.add(message.id)
+    
+    # Clean old messages from set (keep only last 100)
+    if len(processed_messages) > 100:
+        processed_messages.clear()
+        processed_messages.add(message.id)
+    
     # Check if the bot is mentioned
     if bot.user in message.mentions:
+        print(f"[DEBUG] Bot mentioned by {message.author}: {message.content[:50]}...")
+        
         # Extract the question after the mention
         content = message.content
         # Remove the mention from the content
@@ -35,7 +54,6 @@ async def on_message(message):
         if content:  # If there's a question after the mention
             try:
                 async with message.channel.typing():
-                    import asyncio
                     response = await asyncio.to_thread(ask_llm, content)
                 
                 # Handle long responses (Discord 2000 char limit)
@@ -51,7 +69,7 @@ async def on_message(message):
         else:
             await message.reply("¡Hola! Soy MentorIA. Puedes preguntarme sobre inversiones inmobiliarias usando:\n• `!ask <tu pregunta>`\n• `!pregunta <tu pregunta>`\n• O simplemente mencionarme: `@MentorIA <tu pregunta>`")
         
-        # Return early to prevent processing as command (avoid duplicate responses)
+        # Don't process commands if bot was mentioned
         return
     
     # Process commands normally (only if not a mention)
@@ -67,8 +85,6 @@ async def ask(ctx, *, query: str):
     """Ask questions about real estate investments"""
     try:
         async with ctx.typing():
-            # Run the synchronous RAG call in a thread to avoid blocking
-            import asyncio
             response = await asyncio.to_thread(ask_llm, query)
         
         # Handle long responses (Discord 2000 char limit)
@@ -88,8 +104,6 @@ async def pregunta(ctx, *, query: str):
     """Pregunta sobre inversiones inmobiliarias en español"""
     try:
         async with ctx.typing():
-            # Run the synchronous RAG call in a thread to avoid blocking
-            import asyncio
             response = await asyncio.to_thread(ask_llm, query)
         
         # Handle long responses (Discord 2000 char limit)

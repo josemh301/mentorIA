@@ -9,6 +9,10 @@ Discord bot written in Python that provides real estate investment advice using 
 - Fixed type annotation issue in rag.py for better type safety
 - Set up workflow to run Discord bot automatically
 - Bot successfully connects to Discord as "MentorIA#6205"
+- Fixed EdenAI RAG API integration - confirmed using user's real estate mentorship documents
+- Added support for @mentions in channels alongside ! commands
+- Implemented retry logic for temporary 404 errors from EdenAI API
+- Fixed duplicate response issue with message ID tracking system
 
 ## User Preferences
 - Spanish language interface (bot commands and responses in Spanish)
