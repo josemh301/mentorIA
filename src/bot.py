@@ -27,7 +27,9 @@ async def ask(ctx, *, query: str):
     """Ask questions about real estate investments"""
     try:
         async with ctx.typing():
-            response = ask_llm(query)
+            # Run the synchronous RAG call in a thread to avoid blocking
+            import asyncio
+            response = await asyncio.to_thread(ask_llm, query)
         
         # Handle long responses (Discord 2000 char limit)
         if len(response) > 2000:
