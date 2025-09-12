@@ -29,5 +29,6 @@ args = "python src/bot.py"
 outputType = "console"
 
 [deployment]
-deploymentTarget = "vm"
+deploymentTarget = "gce"
 run = ["python", "src/bot.py"]
+ignorePorts = true
