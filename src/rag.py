@@ -14,7 +14,7 @@ LLM_SETTINGS = {
     "min_score": 0.4,
     "temperature": 0.1,
 }
-SYSTEM_PROMPT = "\"\"\"Responde preguntas sobre inversiones inmobiliarias que encuentre en el contexto proporcionado.\"\"\""
+SYSTEM_PROMPT = "Responde preguntas sobre inversiones inmobiliarias que encuentre en el contexto proporcionado."
 
 
 def ask_llm(query: str) -> str:
@@ -29,9 +29,19 @@ def ask_llm(query: str) -> str:
         "question": query,
         "chatbot_global_action": SYSTEM_PROMPT,
     }
-    response = requests.post(url, headers=headers,
-                             json=payload, timeout=TIMEOUT)
-    response.raise_for_status()
-    data = response.json()
-
-    return data.get("response", data.get("result", "No response received"))
+    try:
+        response = requests.post(url, headers=headers,
+                                 json=payload, timeout=TIMEOUT)
+        if response.status_code != 200:
+            print(f"EdenAI API Error {response.status_code}: {response.text}")
+            return f"Error: Unable to get response from AI service (Status: {response.status_code})"
+        
+        data = response.json()
+        return data.get("response", data.get("result", "No response received"))
+    
+    except requests.RequestException as e:
+        print(f"Request error: {str(e)}")
+        return f"Error: Failed to connect to AI service - {str(e)}"
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        return f"Error: Unexpected issue occurred - {str(e)}"
