@@ -22,7 +22,7 @@ def ask_llm(query: str) -> str:
     headers = {
         "accept": "application/json",
         "content-type": "application/json",
-        "Authorization": "Bearer " + os.getenv("EDENAI_API_KEY"),
+        "Authorization": "Bearer " + (os.getenv("EDENAI_API_KEY") or ""),
     }
     payload = {
         **LLM_SETTINGS,
