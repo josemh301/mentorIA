@@ -17,6 +17,43 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 async def on_ready():
     print(f'Bot conectado como {bot.user}')
 
+@bot.event
+async def on_message(message):
+    # Ignore messages from the bot itself
+    if message.author == bot.user:
+        return
+    
+    # Check if the bot is mentioned
+    if bot.user in message.mentions:
+        # Extract the question after the mention
+        content = message.content
+        # Remove the mention from the content
+        for mention in message.mentions:
+            if mention == bot.user:
+                content = content.replace(f'<@{mention.id}>', '').replace(f'<@!{mention.id}>', '').strip()
+        
+        if content:  # If there's a question after the mention
+            try:
+                async with message.channel.typing():
+                    import asyncio
+                    response = await asyncio.to_thread(ask_llm, content)
+                
+                # Handle long responses (Discord 2000 char limit)
+                if len(response) > 2000:
+                    chunks = [response[i:i+2000] for i in range(0, len(response), 2000)]
+                    for chunk in chunks:
+                        await message.reply(chunk)
+                else:
+                    await message.reply(response)
+                    
+            except Exception as e:
+                await message.reply(f"Error: {str(e)}")
+        else:
+            await message.reply("¡Hola! Soy MentorIA. Puedes preguntarme sobre inversiones inmobiliarias usando:\n• `!ask <tu pregunta>`\n• `!pregunta <tu pregunta>`\n• O simplemente mencionarme: `@MentorIA <tu pregunta>`")
+    
+    # Process commands normally
+    await bot.process_commands(message)
+
 @bot.command()
 async def ping(ctx):
     latency = round(bot.latency * 1000)  # in milliseconds

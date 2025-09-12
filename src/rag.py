@@ -32,19 +32,35 @@ def ask_llm(query: str) -> str:
         "max_tokens": 4096,
         "chatbot_global_action": SYSTEM_PROMPT,
     }
-    try:
-        response = requests.post(url, headers=headers,
-                                 json=payload, timeout=TIMEOUT)
-        if response.status_code != 200:
-            print(f"EdenAI API Error {response.status_code}: {response.text}")
-            return f"Error: Unable to get response from AI service (Status: {response.status_code})"
+    # Retry mechanism for potential 404 errors
+    max_retries = 2
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, headers=headers,
+                                     json=payload, timeout=TIMEOUT)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("response", data.get("result", "No response received"))
+            elif response.status_code == 404 and attempt < max_retries - 1:
+                print(f"EdenAI API 404 on attempt {attempt + 1}, retrying...")
+                import time
+                time.sleep(1)  # Wait 1 second before retry
+                continue
+            else:
+                print(f"EdenAI API Error {response.status_code}: {response.text}")
+                return f"Error: Unable to get response from AI service (Status: {response.status_code})"
         
-        data = response.json()
-        return data.get("response", data.get("result", "No response received"))
+        except requests.RequestException as e:
+            if attempt < max_retries - 1:
+                print(f"Request error on attempt {attempt + 1}, retrying: {str(e)}")
+                import time
+                time.sleep(1)
+                continue
+            else:
+                print(f"Request error: {str(e)}")
+                return f"Error: Failed to connect to AI service - {str(e)}"
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")
+            return f"Error: Unexpected issue occurred - {str(e)}"
     
-    except requests.RequestException as e:
-        print(f"Request error: {str(e)}")
-        return f"Error: Failed to connect to AI service - {str(e)}"
-    except Exception as e:
-        print(f"Unexpected error: {str(e)}")
-        return f"Error: Unexpected issue occurred - {str(e)}"
+    return "Error: Unable to get response after multiple attempts"
