@@ -18,7 +18,7 @@ SYSTEM_PROMPT = "Responde preguntas sobre inversiones inmobiliarias que encuentr
 
 
 def ask_llm(query: str) -> str:
-    url = f"https://api.edenai.run/v2/aiproducts/askyoda/{os.getenv('RAG_PROJECT_ID')}/ask_llm/"
+    url = f"https://api.edenai.run/v2/aiproducts/askyoda/v2/{os.getenv('RAG_PROJECT_ID')}/"
     headers = {
         "accept": "application/json",
         "content-type": "application/json",
