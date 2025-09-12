@@ -14,6 +14,9 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# Track processed messages to avoid duplicates
+processed_messages = set()
+
 @bot.event
 async def on_ready():
     print(f'Bot conectado como {bot.user}')
@@ -23,6 +26,17 @@ async def on_message(message):
     # Ignore messages from the bot itself
     if message.author == bot.user:
         return
+    
+    # Skip if we've already processed this message
+    if message.id in processed_messages:
+        return
+    
+    # Add message to processed set
+    processed_messages.add(message.id)
+    
+    # Clean old messages from set (keep only last 100)
+    if len(processed_messages) > 100:
+        processed_messages.clear()
     
     # Only respond if the bot is mentioned
     if bot.user in message.mentions:
