@@ -50,8 +50,11 @@ async def on_message(message):
                 await message.reply(f"Error: {str(e)}")
         else:
             await message.reply("¡Hola! Soy MentorIA. Puedes preguntarme sobre inversiones inmobiliarias usando:\n• `!ask <tu pregunta>`\n• `!pregunta <tu pregunta>`\n• O simplemente mencionarme: `@MentorIA <tu pregunta>`")
+        
+        # Return early to prevent processing as command (avoid duplicate responses)
+        return
     
-    # Process commands normally
+    # Process commands normally (only if not a mention)
     await bot.process_commands(message)
 
 @bot.command()
