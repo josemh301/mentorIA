@@ -13,6 +13,8 @@ Discord bot written in Python that provides real estate investment advice using 
 - Added support for @mentions in channels alongside ! commands
 - Implemented retry logic for temporary 404 errors from EdenAI API
 - Fixed duplicate response issue with message ID tracking system
+- Implemented smart text chunking to fix Discord 50035 error (2000 character limit exceeded)
+- Added safe message sending functions that split at natural boundaries (sentences/paragraphs)
 
 ## User Preferences
 - Spanish language interface (bot commands and responses in Spanish)

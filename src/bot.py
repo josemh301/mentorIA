@@ -6,6 +6,7 @@ from rag import ask_llm
 import asyncio
 import hashlib
 import time
+import re
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
@@ -18,6 +19,74 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Robust duplicate tracking system
 processed_messages = {}  # Hash -> timestamp
+
+def smart_chunk(text, max_length=1900):
+    """Split text at natural boundaries to avoid cutting words/sentences"""
+    if len(text) <= max_length:
+        return [text]
+    
+    chunks = []
+    current_chunk = ""
+    
+    # Try to split at paragraph breaks first
+    paragraphs = text.split('\n\n')
+    
+    for paragraph in paragraphs:
+        # If paragraph fits in current chunk, add it
+        if len(current_chunk + '\n\n' + paragraph) <= max_length:
+            if current_chunk:
+                current_chunk += '\n\n' + paragraph
+            else:
+                current_chunk = paragraph
+        else:
+            # Save current chunk if it exists
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+                current_chunk = ""
+            
+            # If paragraph itself is too long, split by sentences
+            if len(paragraph) > max_length:
+                sentences = re.split(r'(?<=[.!?])\s+', paragraph)
+                for sentence in sentences:
+                    if len(current_chunk + ' ' + sentence) <= max_length:
+                        if current_chunk:
+                            current_chunk += ' ' + sentence
+                        else:
+                            current_chunk = sentence
+                    else:
+                        if current_chunk:
+                            chunks.append(current_chunk.strip())
+                        current_chunk = sentence
+            else:
+                current_chunk = paragraph
+    
+    # Add remaining chunk
+    if current_chunk:
+        chunks.append(current_chunk.strip())
+    
+    return chunks
+
+async def safe_reply(message, content):
+    """Safely send message chunks that won't exceed Discord limits"""
+    try:
+        chunks = smart_chunk(content, 1900)  # Conservative limit for safety
+        for i, chunk in enumerate(chunks):
+            if i == 0:
+                await message.reply(chunk)
+            else:
+                await message.channel.send(chunk)
+    except Exception as e:
+        # Fallback for very problematic content
+        await message.reply(f"Error enviando respuesta: {str(e)}")
+
+async def safe_send(ctx, content):
+    """Safely send message chunks for commands"""
+    try:
+        chunks = smart_chunk(content, 1900)
+        for chunk in chunks:
+            await ctx.send(chunk)
+    except Exception as e:
+        await ctx.send(f"Error enviando respuesta: {str(e)}")
 
 def is_duplicate_message(message):
     """Check if message is a duplicate using content hash + time window"""
@@ -73,13 +142,8 @@ async def on_message(message):
                 async with message.channel.typing():
                     response = await asyncio.to_thread(ask_llm, content)
                 
-                # Handle long responses (Discord 2000 char limit)
-                if len(response) > 2000:
-                    chunks = [response[i:i+2000] for i in range(0, len(response), 2000)]
-                    for chunk in chunks:
-                        await message.reply(chunk)
-                else:
-                    await message.reply(response)
+                # Use safe reply to handle long responses properly
+                await safe_reply(message, response)
                 print(f"[SUCCESS] Responded to: {content[:30]}...")
                     
             except Exception as e:
@@ -105,13 +169,8 @@ async def ask(ctx, *, query: str):
         async with ctx.typing():
             response = await asyncio.to_thread(ask_llm, query)
         
-        # Handle long responses (Discord 2000 char limit)
-        if len(response) > 2000:
-            chunks = [response[i:i+2000] for i in range(0, len(response), 2000)]
-            for chunk in chunks:
-                await ctx.send(chunk)
-        else:
-            await ctx.send(response)
+        # Use safe send to handle long responses properly
+        await safe_send(ctx, response)
             
     except Exception as e:
         await ctx.send(f"Error: {str(e)}")
@@ -123,13 +182,8 @@ async def pregunta(ctx, *, query: str):
         async with ctx.typing():
             response = await asyncio.to_thread(ask_llm, query)
         
-        # Handle long responses (Discord 2000 char limit)
-        if len(response) > 2000:
-            chunks = [response[i:i+2000] for i in range(0, len(response), 2000)]
-            for chunk in chunks:
-                await ctx.send(chunk)
-        else:
-            await ctx.send(response)
+        # Use safe send to handle long responses properly
+        await safe_send(ctx, response)
             
     except Exception as e:
         await ctx.send(f"Error: {str(e)}")
